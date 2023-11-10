@@ -22,11 +22,31 @@ class _GamePageState extends State<SnakeGamePage>
   late String _currentSnakeDirection;
   late int _snakeFoodPosition;
   Random _random = new Random();
+  late Timer _foodTimer;
 
   @override
   void initState() {
     super.initState();
     _setUpGame();
+  }
+
+  @override
+  void dispose() {
+    _stopFoodTimer(); // Stop the food timer when the widget is disposed
+    _snakeController.dispose();
+    super.dispose();
+  }
+
+  void _startFoodTimer() {
+    _foodTimer = Timer.periodic(Duration(seconds: 8), (Timer timer) {
+      if (!_hasStarted) {
+        _updateFoodPosition();
+      }
+    });
+  }
+
+  void _stopFoodTimer() {
+    _foodTimer.cancel();
   }
 
   void _setUpGame() {
@@ -42,9 +62,13 @@ class _GamePageState extends State<SnakeGamePage>
   }
 
   void _gameStart() {
+    _startFoodTimer(); // Start the food timer
     Timer.periodic(Duration(milliseconds: 250), (Timer timer) {
       _updateSnake();
-      if (_hasStarted) timer.cancel();
+      if (_hasStarted) {
+        timer.cancel();
+        _stopFoodTimer(); // Stop the food timer
+      }
     });
   }
 
@@ -52,6 +76,14 @@ class _GamePageState extends State<SnakeGamePage>
     for (int i = 0; i < _snake.length - 1; i++)
       if (_snake.last == _snake[i]) return true;
     return false;
+  }
+
+  void _updateFoodPosition() {
+    setState(() {
+      do {
+        _snakeFoodPosition = _random.nextInt(_noOfSquares);
+      } while (_snake.contains(_snakeFoodPosition));
+    });
   }
 
   void _updateSnake() {
@@ -86,9 +118,11 @@ class _GamePageState extends State<SnakeGamePage>
               _snake.add(_snake.last - 1);
         }
 
-        if (_snake.last != _snakeFoodPosition)
+        if (_snake.last != _snakeFoodPosition) {
           _snake.removeAt(0);
-        else {
+        } else {
+          // Snake eats the food
+          _resetFoodTimer();
           do {
             _snakeFoodPosition = _random.nextInt(_noOfSquares);
           } while (_snake.contains(_snakeFoodPosition));
@@ -103,6 +137,12 @@ class _GamePageState extends State<SnakeGamePage>
         }
       });
     }
+  }
+
+  void _resetFoodTimer() {
+    // Reset the food timer
+    _stopFoodTimer();
+    _startFoodTimer();
   }
 
   @override
