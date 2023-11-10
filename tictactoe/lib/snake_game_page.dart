@@ -16,6 +16,7 @@ class _GamePageState extends State<SnakeGamePage>
   late Animation<double> _snakeAnimation;
   late AnimationController _snakeController;
   List<int> _snake = [404, 405, 406, 407];
+  List<int> _obstacles = []; // Add this line
   final int _noOfSquares = 500;
   final Duration _duration = Duration(milliseconds: 250);
   final int _squareSize = 20;
@@ -23,6 +24,7 @@ class _GamePageState extends State<SnakeGamePage>
   late int _snakeFoodPosition;
   Random _random = new Random();
   late Timer _foodTimer;
+  late Timer _obstacleTimer;
 
   @override
   void initState() {
@@ -32,7 +34,8 @@ class _GamePageState extends State<SnakeGamePage>
 
   @override
   void dispose() {
-    _stopFoodTimer(); // Stop the food timer when the widget is disposed
+    _stopFoodTimer();
+    _stopObstacleTimer();
     _snakeController.dispose();
     super.dispose();
   }
@@ -59,15 +62,46 @@ class _GamePageState extends State<SnakeGamePage>
     _snakeController = AnimationController(vsync: this, duration: _duration);
     _snakeAnimation =
         CurvedAnimation(curve: Curves.easeInOut, parent: _snakeController);
+    _startObstacleTimer();
+  }
+
+  void _startObstacleTimer() {
+    _obstacleTimer = Timer.periodic(Duration(seconds: 5), (Timer timer) {
+      if (!_hasStarted) {
+        _updateObstacles();
+      }
+    });
+  }
+
+  void _stopObstacleTimer() {
+    _obstacleTimer.cancel();
+  }
+
+  void _updateObstacles() {
+    setState(() {
+      _obstacles.clear(); // Remove existing obstacles
+      for (int i = 0; i < 2; i++) {
+        int obstaclePosition;
+        do {
+          obstaclePosition = _random.nextInt(_noOfSquares);
+        } while (_snake.contains(obstaclePosition) ||
+            _obstacles.contains(obstaclePosition) ||
+            obstaclePosition == _snakeFoodPosition);
+
+        _obstacles.add(obstaclePosition);
+      }
+    });
   }
 
   void _gameStart() {
-    _startFoodTimer(); // Start the food timer
+    _startFoodTimer();
+    _startObstacleTimer();
     Timer.periodic(Duration(milliseconds: 250), (Timer timer) {
       _updateSnake();
       if (_hasStarted) {
         timer.cancel();
-        _stopFoodTimer(); // Stop the food timer
+        _stopFoodTimer();
+        _stopObstacleTimer();
       }
     });
   }
@@ -75,6 +109,8 @@ class _GamePageState extends State<SnakeGamePage>
   bool _gameOver() {
     for (int i = 0; i < _snake.length - 1; i++)
       if (_snake.last == _snake[i]) return true;
+    if (_obstacles.contains(_snake.last))
+      return true; // Check for collision with obstacles
     return false;
   }
 
@@ -82,7 +118,8 @@ class _GamePageState extends State<SnakeGamePage>
     setState(() {
       do {
         _snakeFoodPosition = _random.nextInt(_noOfSquares);
-      } while (_snake.contains(_snakeFoodPosition));
+      } while (_snake.contains(_snakeFoodPosition) ||
+          _obstacles.contains(_snakeFoodPosition));
     });
   }
 
@@ -125,7 +162,8 @@ class _GamePageState extends State<SnakeGamePage>
           _resetFoodTimer();
           do {
             _snakeFoodPosition = _random.nextInt(_noOfSquares);
-          } while (_snake.contains(_snakeFoodPosition));
+          } while (_snake.contains(_snakeFoodPosition) ||
+              _obstacles.contains(_snakeFoodPosition));
         }
 
         if (_gameOver()) {
@@ -209,20 +247,25 @@ class _GamePageState extends State<SnakeGamePage>
                     color: Colors.white,
                     padding: _snake.contains(index)
                         ? EdgeInsets.all(1)
-                        : EdgeInsets.all(0),
+                        : _obstacles.contains(index)
+                            ? EdgeInsets.all(1)
+                            : EdgeInsets.all(0),
                     child: ClipRRect(
-                      borderRadius:
-                          index == _snakeFoodPosition || index == _snake.last
-                              ? BorderRadius.circular(7)
-                              : _snake.contains(index)
-                                  ? BorderRadius.circular(2.5)
-                                  : BorderRadius.circular(1),
+                      borderRadius: index == _snakeFoodPosition ||
+                              index == _snake.last ||
+                              _obstacles.contains(index)
+                          ? BorderRadius.circular(7)
+                          : _snake.contains(index)
+                              ? BorderRadius.circular(2.5)
+                              : BorderRadius.circular(1),
                       child: Container(
                           color: _snake.contains(index)
                               ? Colors.black
                               : index == _snakeFoodPosition
                                   ? Colors.green
-                                  : Colors.blue),
+                                  : _obstacles.contains(index)
+                                      ? Colors.red // Obstacle color
+                                      : Colors.blue),
                     ),
                   ),
                 );
