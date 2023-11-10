@@ -5,6 +5,17 @@ class SnakeGame extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: Text('Snake Game'),
+        backgroundColor: Colors.black, // Set the background color to black
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back),
+          onPressed: () {
+            // Navigate back to the main page
+            Navigator.pop(context);
+          },
+        ),
+      ),
       body: Container(
         width: MediaQuery.of(context).size.width,
         height: MediaQuery.of(context).size.height,

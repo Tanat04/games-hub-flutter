@@ -102,7 +102,14 @@ class _GameBoardState extends State<GameBoard> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Text('Score: Player X - $scoreX : Player O - $scoreO'),
+        Container(
+          margin: EdgeInsets.only(
+              bottom: 15.0), // Add some bottom margin to the container
+          child: Text(
+            'Score: Player X - $scoreX : Player O - $scoreO',
+            style: TextStyle(fontSize: 16),
+          ),
+        ),
         GridView.builder(
           shrinkWrap: true,
           itemCount: 9,
@@ -140,7 +147,8 @@ class _GameBoardState extends State<GameBoard> {
       builder: (BuildContext context) {
         return AlertDialog(
           title: Text('Game Over'),
-          content: Text(winner == 'Draw' ? 'It\'s a Draw!' : 'Player $winner wins!'),
+          content:
+              Text(winner == 'Draw' ? 'It\'s a Draw!' : 'Player $winner wins!'),
           actions: [
             TextButton(
               onPressed: () {

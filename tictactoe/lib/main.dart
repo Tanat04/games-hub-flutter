@@ -12,6 +12,7 @@ class MainApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false, // Set this line to false
       home: MainPage(),
     );
   }
@@ -23,6 +24,8 @@ class MainPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text('Games Hub'),
+        backgroundColor:
+            Colors.black, // Set the AppBar background color to black
       ),
       body: Center(
         child: Column(
@@ -35,7 +38,15 @@ class MainPage extends StatelessWidget {
                   MaterialPageRoute(builder: (context) => GamePage()),
                 );
               },
-              child: Text('Tic Tac Toe'),
+              style: ElevatedButton.styleFrom(
+                elevation: 10,
+                minimumSize: Size(200, 50),
+                primary: Colors.black, // Set the button color to black
+              ),
+              child: Text(
+                'Tic Tac Toe',
+                style: TextStyle(fontSize: 18),
+              ),
             ),
             SizedBox(height: 20),
             ElevatedButton(
@@ -45,7 +56,15 @@ class MainPage extends StatelessWidget {
                   MaterialPageRoute(builder: (context) => SnakeGame()),
                 );
               },
-              child: Text('Snake Game'),
+              style: ElevatedButton.styleFrom(
+                elevation: 10,
+                minimumSize: Size(200, 50),
+                primary: Colors.black, // Set the button color to black
+              ),
+              child: Text(
+                'Snake Game',
+                style: TextStyle(fontSize: 18),
+              ),
             ),
           ],
         ),
