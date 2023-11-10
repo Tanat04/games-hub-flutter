@@ -1,74 +1,27 @@
 import 'package:flutter/material.dart';
-import 'package:tictactoe/game_page.dart';
-import 'package:tictactoe/snake_game.dart'; // Import your SnakeGamePage
+import 'package:flutter/services.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:tictactoe/auth/main_page.dart';
+import 'firebase_options.dart';
 
-void main() {
-  runApp(const MainApp());
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+  runApp(MainApp());
 }
 
 class MainApp extends StatelessWidget {
-  const MainApp({Key? key}) : super(key: key);
+  const MainApp({super.key});
 
   @override
   Widget build(BuildContext context) {
+    SystemChrome.setSystemUIOverlayStyle(
+        SystemUiOverlayStyle(statusBarColor: Colors.transparent));
     return MaterialApp(
-      debugShowCheckedModeBanner: false, // Set this line to false
+      debugShowCheckedModeBanner: false,
       home: MainPage(),
-    );
-  }
-}
-
-class MainPage extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Games Hub'),
-        backgroundColor:
-            Colors.black, // Set the AppBar background color to black
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            ElevatedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => GamePage()),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                elevation: 10,
-                minimumSize: Size(200, 50),
-                primary: Colors.black, // Set the button color to black
-              ),
-              child: Text(
-                'Tic Tac Toe',
-                style: TextStyle(fontSize: 18),
-              ),
-            ),
-            SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => SnakeGame()),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                elevation: 10,
-                minimumSize: Size(200, 50),
-                primary: Colors.black, // Set the button color to black
-              ),
-              child: Text(
-                'Snake Game',
-                style: TextStyle(fontSize: 18),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
