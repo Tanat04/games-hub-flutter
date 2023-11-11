@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:tictactoe/services/firestore_service.dart';
 
 class AIGameBoard extends StatefulWidget {
   const AIGameBoard({Key? key}) : super(key: key);
@@ -8,23 +9,64 @@ class AIGameBoard extends StatefulWidget {
   _AIGameBoardState createState() => _AIGameBoardState();
 }
 
+enum Difficulty { Impossible, Easy }
+
 class _AIGameBoardState extends State<AIGameBoard> {
   List<List<String>> matrix = List.generate(3, (_) => List.filled(3, ''));
   String currentPlayer = 'X';
+  String player = '';
   int scoreX = 0;
   int scoreO = 0;
+  Difficulty selectedDifficulty = Difficulty.Impossible; // Default to Impossible
+  List<int>? winnerLine;
+
+  @override
+  void initState() {
+    super.initState();
+    // Fetch the current user's username when the widget is initialized
+    FirestoreService().getUserUsername().then((username) {
+      setState(() {
+        player = username;
+      });
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
         Container(
-          margin: EdgeInsets.only(
-              bottom: 15.0), // Add some bottom margin to the container
+          margin: EdgeInsets.only(bottom: 15.0),
           child: Text(
-            'Score:Player [X] - $scoreX :AI [O] - $scoreO',
+            'Score:$player X - $scoreX :AI O - $scoreO',
             style: TextStyle(fontSize: 16),
           ),
+        ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text('Difficulty:'),
+            Radio(
+              value: Difficulty.Impossible,
+              groupValue: selectedDifficulty,
+              onChanged: (value) {
+                setState(() {
+                  selectedDifficulty = value as Difficulty;
+                });
+              },
+            ),
+            Text('Impossible'),
+            Radio(
+              value: Difficulty.Easy,
+              groupValue: selectedDifficulty,
+              onChanged: (value) {
+                setState(() {
+                  selectedDifficulty = value as Difficulty;
+                });
+              },
+            ),
+            Text('Baby Level'),
+          ],
         ),
         GridView.builder(
           shrinkWrap: true,
@@ -45,13 +87,27 @@ class _AIGameBoardState extends State<AIGameBoard> {
                   child: Center(
                     child: Text(
                       matrix[i][j],
-                      style: const TextStyle(fontSize: 48),
+                      style: TextStyle(
+                        fontSize: 48,
+                        color: winnerLine != null && winnerLine!.contains(index)
+                            ? Colors.green
+                            : Colors.black,
+                      ),
                     ),
                   ),
                 ),
               ),
             );
           },
+        ),
+        ElevatedButton(
+          onPressed: () {
+            _resetGame();
+          },
+          style: ButtonStyle(
+            backgroundColor: MaterialStateProperty.all<Color>(Colors.black),
+          ),
+          child: Text('Reset Game', style: TextStyle(color: Colors.white)),
         ),
       ],
     );
@@ -81,6 +137,7 @@ class _AIGameBoardState extends State<AIGameBoard> {
         break;
       }
       if (col == 2) {
+        winnerLine = [i * 3, i * 3 + 1, i * 3 + 2];
         return true;
       }
     }
@@ -91,6 +148,7 @@ class _AIGameBoardState extends State<AIGameBoard> {
         break;
       }
       if (row == 2) {
+        winnerLine = [j, j + 3, j + 6];
         return true;
       }
     }
@@ -102,6 +160,7 @@ class _AIGameBoardState extends State<AIGameBoard> {
           break;
         }
         if (diag == 2) {
+          winnerLine = [0, 4, 8];
           return true;
         }
       }
@@ -114,6 +173,7 @@ class _AIGameBoardState extends State<AIGameBoard> {
           break;
         }
         if (diag == 2) {
+          winnerLine = [2, 4, 6];
           return true;
         }
       }
@@ -122,38 +182,66 @@ class _AIGameBoardState extends State<AIGameBoard> {
     return false;
   }
 
-  void _handleWinner(String player) {
-    if (player == 'X') {
-      scoreX++;
-    } else if (player == 'O') {
-      scoreO++;
+void _handleWinner(String player) {
+  if (player == 'X') {
+    scoreX++;
+  } else if (player == 'O') {
+    scoreO++;
+    if (selectedDifficulty == Difficulty.Impossible) {
+      // Update user score based on the game outcome
+      int userScore = 0;
+      if (player == 'X') {
+        userScore = 500;
+      } else if (player == 'O') {
+        userScore = -100;
+      } else {
+        userScore = 50;
+      }
+
+      FirestoreService().getUserScore().then((currentScore) {
+        FirestoreService().updateUserScore(currentScore + userScore);
+      });
     }
-    _showResult(player);
-    _resetGame();
   }
+}
 
   void _showResult(String winner) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Game Over'),
-          content:
-              Text(winner == 'Draw' ? 'It\'s a Draw!' : 'Player $winner wins!'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                _resetGame(); // Reset the game when "Play Again" is pressed
-                Navigator.of(context).pop(); // Close the dialog
-              },
-              child: Text('Play Again'),
-            ),
-          ],
-        );
-      },
-    );
+  if (winner == 'Draw') {
+    _handleDraw();
+  } else {
+    _handleWinner(winner);
   }
 
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        title: Text('Game Over?'),
+        content: Text(
+          winner == 'Draw' ? 'It\'s a Draw!' : 'Player $winner wins!',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+            child: Text('Try Again'),
+          ),
+        ],
+      );
+    },
+  );
+}
+
+void _handleDraw() {
+  // Update user score for a draw
+  if (selectedDifficulty == Difficulty.Impossible) {
+    FirestoreService().getUserScore().then((currentScore) {
+      // Add 50 points for a draw
+      FirestoreService().updateUserScore(currentScore + 50);
+    });
+  }
+}
   bool _isBoardFull() {
     for (int i = 0; i < 3; i++) {
       for (int j = 0; j < 3; j++) {
@@ -165,66 +253,19 @@ class _AIGameBoardState extends State<AIGameBoard> {
     return true;
   }
 
-  // void _aiMove() {
-  //   // AI will block the player if they are about to win, or take the winning move if available
-  //   for (int i = 0; i < 3; i++) {
-  //     for (int j = 0; j < 3; j++) {
-  //       if (matrix[i][j] == '') {
-  //         matrix[i][j] = 'O';
-  //         if (_checkWinner(i, j)) {
-  //           _handleWinner('O');
-  //           return;
-  //         }
-  //         matrix[i][j] = 'X';
-  //         if (_checkWinner(i, j)) {
-  //           matrix[i][j] = 'O';
-  //           return;
-  //         }
-  //         matrix[i][j] = '';
-  //       }
-  //     }
-  //   }
-
-  //   // If no block or winning move, take the center spot
-  //   if (matrix[1][1] == '') {
-  //     matrix[1][1] = 'O';
-  //     if (_checkWinner(1, 1)) {
-  //       _handleWinner('O');
-  //     }
-  //   } else {
-  //     // If no block, winning move, or center spot, take a random spot
-  //     while (true) {
-  //       var rng = new Random();
-  //       int i = rng.nextInt(3);
-  //       int j = rng.nextInt(3);
-  //       if (matrix[i][j] == '') {
-  //         matrix[i][j] = 'O';
-  //         if (_checkWinner(i, j)) {
-  //           _handleWinner('O');
-  //         }
-  //         break;
-  //       }
-  //     }
-  //   }
-  // }
-  // Add this method to the _AIGameBoardState class
   int _evaluateBoard() {
-    // Check rows, columns, and diagonals for a winner
     for (int i = 0; i < 3; i++) {
-      // Check rows
       if (matrix[i][0] == matrix[i][1] && matrix[i][1] == matrix[i][2]) {
         if (matrix[i][0] == 'O') return 1;
         if (matrix[i][0] == 'X') return -1;
       }
 
-      // Check columns
       if (matrix[0][i] == matrix[1][i] && matrix[1][i] == matrix[2][i]) {
         if (matrix[0][i] == 'O') return 1;
         if (matrix[0][i] == 'X') return -1;
       }
     }
 
-    // Check diagonals
     if (matrix[0][0] == matrix[1][1] && matrix[1][1] == matrix[2][2]) {
       if (matrix[0][0] == 'O') return 1;
       if (matrix[0][0] == 'X') return -1;
@@ -235,11 +276,9 @@ class _AIGameBoardState extends State<AIGameBoard> {
       if (matrix[0][2] == 'X') return -1;
     }
 
-    // No winner, return 0
     return 0;
   }
 
-// Add this method to the _AIGameBoardState class
   int _alphaBetaPruning(int depth, int alpha, int beta, bool isMaximizing) {
     int score = _evaluateBoard();
 
@@ -288,9 +327,8 @@ class _AIGameBoardState extends State<AIGameBoard> {
     }
   }
 
-// Modify the _aiMove method to use the alpha-beta pruning algorithm
   void _aiMove() {
-    int bestScore = -1000;
+    int bestScore = selectedDifficulty == Difficulty.Impossible ? -1000 : 1000;
     int bestMoveI = -1;
     int bestMoveJ = -1;
 
@@ -301,10 +339,18 @@ class _AIGameBoardState extends State<AIGameBoard> {
           int moveScore = _alphaBetaPruning(0, -1000, 1000, false);
           matrix[i][j] = '';
 
-          if (moveScore > bestScore) {
-            bestScore = moveScore;
-            bestMoveI = i;
-            bestMoveJ = j;
+          if (selectedDifficulty == Difficulty.Impossible) {
+            if (moveScore > bestScore) {
+              bestScore = moveScore;
+              bestMoveI = i;
+              bestMoveJ = j;
+            }
+          } else {
+            if (moveScore < bestScore) {
+              bestScore = moveScore;
+              bestMoveI = i;
+              bestMoveJ = j;
+            }
           }
         }
       }
@@ -322,6 +368,7 @@ class _AIGameBoardState extends State<AIGameBoard> {
     setState(() {
       matrix = List.generate(3, (_) => List.filled(3, ''));
       currentPlayer = 'X';
+      winnerLine = null; // Reset the winner line indicator
     });
   }
 }
